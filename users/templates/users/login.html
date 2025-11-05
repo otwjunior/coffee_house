@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coffee House – Sign In</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            text-align: center;
+            margin-top: 10%;
+            background: #f9f4ef;
+            padding: 0;
+            margin: 0;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 3em;
+            color: #4285F4;
+        }
+        p {
+            color: #555;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .button {
+            padding: 14px 28px;
+            font-size: 18px;
+            background: #4285F4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .button:hover {
+            background: #3367D6;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        input[type="email"], input[type="password"] {
+            padding: 12px;
+            width: 100%;
+            font-size: 16px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+        input[type="email"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: #4285F4;
+        }
+        small {
+            display: block;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>☕ Coffee House</h1>
+        <p>Welcome back, barista!</p>
+
+        <!-- Login Form -->
+        <form method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <input type="email" name="email" id="email" placeholder="Email Address" required>
+            </div>
+            <div class="form-group">
+                <input type="password" name="password" id="password" placeholder="Password" required>
+            </div>
+            <button type="submit" class="button">Sign In</button>
+        </form>
+
+        <hr style="margin: 20px 0; border-color: #ddd;">
+
+        <!-- Google Login Button -->
+        <a href="{% url 'social:begin' 'google-oauth2' %}" class="button">
+            Continue with Google
+        </a>
+
+        <br><br>
+
+        <small>Or use the <a href="/admin/">Django admin</a> for superuser access</small>
+    </div>
+</body>
+</html>
