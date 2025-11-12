@@ -25,6 +25,9 @@ urlpatterns = [
     path('api/auth/', include('users.urls')),  # ← ALL your API routes for users login    #path('api/orders/', include('orders.urls')),   # future apps
     path('api/', include('products.urls')),   # just add later
     path('social-auth/', include('social_django.urls')), # google login
+    path('api-auth/', include('rest_framework.urls')), # Browserbable login
+    # HTML fall back routes (login page)
+    path('', include('users.urls')),
 ]
 
 # Serve avatars in dev

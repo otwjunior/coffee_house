@@ -21,7 +21,7 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = [
         ('customer', 'Customer'),
-        ('employee', 'employee'),
+        ('employee', 'Employee'),
         ('admin', 'Administrator'),
         ('partner', 'Partner'),
         ('owner', 'Owner'),
@@ -37,7 +37,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELD = ['full_name'] #create superuser will  ask for fullname
+    REQUIRED_FIELDS = ['full_name'] #create superuser will  ask for fullname
 
     def __str__(self):
         return f"{self.full_name} ({self.role})"
