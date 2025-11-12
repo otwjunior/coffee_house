@@ -23,7 +23,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),           # Django admin
     path('api/auth/', include('users.urls')),  # ← ALL your API routes for users login    #path('api/orders/', include('orders.urls')),   # future apps
-    #path('api/products/', include('products.urls')),   # just add later
+    path('api/', include('products.urls')),   # just add later
     path('social-auth/', include('social_django.urls')), # google login
 ]
 
