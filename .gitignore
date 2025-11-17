@@ -1,5 +1,7 @@
 #ignore   environment variables
 .env
-
+.__pycache__/
+*.pyc
+media/
 #ignore virtul environment
 djangoenv/
