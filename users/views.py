@@ -3,37 +3,74 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
-from rest_framework.authtoken.models import Token
-from django.contrib.auth import authenticate, login, logout
-from django.shortcuts import render, redirect
-from django.urls import reverse
-from django.http import HttpResponseBadRequest
 
-from .serializers import UserSerializer, LoginSerializer, RegisterSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import login
+from django.middleware.csrf import get_token
+
+from .models import User
+from .serializers import (
+    UserSerializer,
+    RegisterSerializer,
+    LoginSerializer,
+    ProfileUpdateSerializer,
+    StaffUpdateSerializer,
+)
 
 
-# ───── API VIEWS ─────
-
+# ====================== API VIEWS (Mobile + Web App) ======================
 class MeView(APIView):
-    """GET /api/auth/me/ → current user profile"""
+    """GET /api/auth/me/ → current logged-in user"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response(UserSerializer(request.user).data)
+        return Response(UserSerializer(request.user, context={'request': request}).data)
 
 
-class OnboardingAPI(APIView):
-    """GET /api/auth/onboarding/ → profile + onboarding flag
-       PATCH /api/auth/onboarding/ → update full_name, role"""
+class RegisterAPI(APIView):
+    """POST /api/auth/register/ → create account (customers only)"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "user": UserSerializer(user).data,
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "csrf_token": get_token(request),  # for session fallback
+        }, status=status.HTTP_201_CREATED)
+
+
+class LoginAPI(APIView):
+    """POST /api/auth/login/ → JWT + session login"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+
+        login(request, user)  # keeps session for DRF browsable API
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "user": UserSerializer(user).data,
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "csrf_token": get_token(request),
+        })
+
+
+class ProfileUpdateAPI(APIView):
+    """PATCH /api/auth/profile/ → update name, phone, favourite drink"""
     permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        data = UserSerializer(request.user).data
-        data['onboarding_needed'] = not bool(request.user.full_name.strip())
-        return Response(data)
 
     def patch(self, request):
-        serializer = UserSerializer(
+        serializer = ProfileUpdateSerializer(
             request.user,
             data=request.data,
             partial=True,
@@ -41,74 +78,46 @@ class OnboardingAPI(APIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response({
-            "status": "profile saved",
-            "user": UserSerializer(request.user).data
-        })
+        return Response(UserSerializer(request.user).data)
 
 
-class RegisterAPI(APIView):
-    """POST /api/auth/register/"""
-    permission_classes = [AllowAny]
+class StaffManagementAPI(APIView):
+    """PATCH /api/auth/staff/<id>/ → only managers/owners can update role"""
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        if not request.user.is_manager and not request.user.is_owner:
+            return Response({"detail": "Permission denied."}, status=403)
+
+        try:
+            target_user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=404)
+
+        serializer = StaffUpdateSerializer(
+            target_user,
+            data=request.data,
+            partial=True,
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(UserSerializer(target_user).data)
+
+
+class LogoutAPI(APIView):
+    """POST /api/auth/logout/ → blacklist token (optional) + clear session"""
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        token = Token.objects.create(user=user)
-        return Response({
-            "token": token.key,
-            "user": UserSerializer(user).data
-        }, status=status.HTTP_201_CREATED)
-
-
-class LoginAPI(APIView):
-    """POST /api/auth/login/"""
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        token, _ = Token.objects.get_or_create(user=user)
-        login(request, user)  # for session fallback
-        return Response({
-            "token": token.key,
-            "user": UserSerializer(user).data
-        })
-
-
-# ───── HTML FALLBACK VIEWS (Optional) ─────
-
-def login_view(request):
-    """
-    GET  → show login.html
-    POST → authenticate via email/password → redirect or error
-    """
-    if request.method == "GET":
-        return render(request, 'users/login.html')
-
-    if request.method == "POST":
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-
-        if not email or not password:
-            return HttpResponseBadRequest("Email and password required.")
-
-        user = authenticate(request, email=email, password=password)
-        if user is not None:
-            login(request, user)
-            next_url = request.GET.get('next', '/')
-            return redirect(next_url)
-        else:
-            return render(request, 'users/login.html', {
-                'error': 'Invalid email or password.'
-            }, status=400)    
-
-    return HttpResponseBadRequest("Method not allowed.")
-    next_url = request.GET.get('next', '/')
-    return redirect(next_url)
-# Logout
-def logout_view(request):
-    logout(request)
-    return redirect('users:login-page')  # or homepage
+        try:
+            refresh_token = request.data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except:
+            pass
+        request.user.auth_token.delete()  # if using TokenAuth too
+        from django.contrib.auth import logout
+        logout(request)
+        return Response({"detail": "Logged out successfully."})
