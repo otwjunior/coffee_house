@@ -26,6 +26,7 @@ urlpatterns = [
     path('api/', include('products.urls')),   # just add later
     path('social-auth/', include('social_django.urls')), # google login
     path('api-auth/', include('rest_framework.urls')), # Browserbable login
+    path('api/orders', include('orders.urls')),
     # HTML fall back routes (login page)
     path('', include('users.urls')),
 ]

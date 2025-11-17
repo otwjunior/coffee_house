@@ -2,15 +2,15 @@ from .models import Order, OrderItem
 from rest_framework  import serializers
 from decimal import Decimal # money calculations
 from django.utils import timezone #used to validate requested pick up time
-from products.models import Product #validate product exist to get price
-
+from products.serializers import ProductDetailSerializer #validate product exist to get price
+from products.models import Product
 class OrderItemSerializer(serializers.ModelSerializer):
     """Serializer for order item"""
     product = serializers.PrimaryKeyRelatedField(
         queryset=Product.objects.all(),#validate  the id exit in db
         write_only=True,
     )
-    product_details = ProductSerialier(source="product", read_only=True) # nested full product data
+    product_details = ProductDetailSerializer(source="product", read_only=True) # nested full product data
 
     # Human-readable customization
     customizations_display  = serializers.SerializerMethodField() #Dynamic output field: Calls a method to format customizations like "L, Oat, 2 shots".
@@ -27,7 +27,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
     # Custom fields
     def get_customizations_display(self, obj: OrderItem) -> str:
         """Method field: Called when serializing customizations_display.
-            Uses the model methodget_customization_display() to format.
+            Uses the model methodgG62et_customization_display() to format.
         """
         return obj.get_customization_display()
     
@@ -59,12 +59,12 @@ class OrderItemSerializer(serializers.ModelSerializer):
         return item
     
 
-class OrderListRetrieveSerializer(serializers.ModelSerilizer):
+class OrderListRetrieveSerializer(serializers.ModelSerializer):
     """for listing and retrieving orders.
     include nested items and totals.serves GET request
     """
     items = OrderItemSerializer(many=True, read_only=True)
-    items_count = serializers.IntergerField(source="items.count", read_only=True)
+    items_count = serializers.IntegerField(source="items.count", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:
