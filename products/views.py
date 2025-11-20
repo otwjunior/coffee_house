@@ -3,7 +3,7 @@ from rest_framework import viewsets, filters
 from rest_framework.permissions import IsAdminUser, IsAuthenticatedOrReadOnly, AllowAny
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 
 from django_filters.rest_framework import DjangoFilterBackend
 
